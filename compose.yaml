@@ -1,0 +1,38 @@
+services:
+  api:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    env_file: .env
+    ports: ["8000:8000"]
+    volumes:
+      - studio-data:/app/data
+      - studio-artifacts:/app/artifacts/generated
+    depends_on:
+      fake-platform:
+        condition: service_healthy
+
+  worker:
+    build: .
+    command: python -m app.worker
+    env_file: .env
+    volumes:
+      - studio-data:/app/data
+      - studio-artifacts:/app/artifacts/generated
+    depends_on:
+      fake-platform:
+        condition: service_healthy
+
+  fake-platform:
+    build: .
+    command: uvicorn app.fake_platform:app --host 0.0.0.0 --port 9000
+    ports: ["9000:9000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+
+volumes:
+  studio-data:
+  studio-artifacts:
+
